@@ -6,7 +6,7 @@ env.user = "root"
 repository = "viktorbek/seventweets"
 network = "radionica"
 hostPort = 80
-appPort = 5000
+appPort = 8000
 name = "test"
 
 

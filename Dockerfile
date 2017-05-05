@@ -8,4 +8,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . /usr/src/app
 
-CMD ["python", "tweety.py"]
+ENV GUNICORN_CMD_ARGS="--bind=0:8000 --worker-class=gthread --threads=10"
+
+CMD ["gunicorn", "tweety:app"]
