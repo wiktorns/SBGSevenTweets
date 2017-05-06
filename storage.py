@@ -1,43 +1,67 @@
 """
 'In memory' storage for tweets
 """
+import pg8000
+import functools
+
+
+def uses_db(f):
+    @functools.wraps(f)
+    def wrapper(cls, *args, **kwargs):
+        cursor = cls._conn.cursor()
+        res = f(cls, cursor, *args, **kwargs)
+        cursor.close()
+        cls._conn.commit()
+        return res
+    return wrapper
 
 
 class Storage(object):
-    # Key - tweet id, Value - Dictionary with id, username and message
-    _tweets = {}
-    # Counter used for ids
-    _id_gen = 0
+    _conn = pg8000.connect(
+        user="radionica",
+        host="localhost",
+        database="radionica",
+        password="P4ss"
+    )
 
     @classmethod
-    def next_id(cls):
-        """Generates next valid id"""
-        cls._id_gen += 1
-        return cls._id_gen
-
-    @classmethod
-    def get_tweets(cls):
+    @uses_db
+    def get_tweets(cls, cursor):
         """Returns list of all tweets"""
-        return list(cls._tweets.values())
+        cursor.execute("""SELECT id, name, tweet FROM tweets""")
+        tweets = cursor.fetchall()
+        return tweets
 
     @classmethod
-    def get_tweet(cls, tweet_id):
+    @uses_db
+    def get_tweet(cls, cursor, tweet_id):
         """Returns tweet object if found else returns None"""
-        if tweet_id not in cls._tweets.keys():
-            return None
-
-        return cls._tweets[tweet_id]
+        cursor.execute("""SELECT id, name, tweet FROM tweets WHERE id=%s""", (tweet_id,))
+        tweet = cursor.fetchone()
+        return tweet
 
     @classmethod
-    def add_tweet(cls, tweet, username):
+    @uses_db
+    def add_tweet(cls, cursor, tweet, username):
         """Creates, stores and returns new tweet object"""
-        tweet_id = cls.next_id()
-        cls._tweets[tweet_id] = {"id": tweet_id, "name": username, "message": tweet}
-
-        return cls._tweets[tweet_id]
+        cursor.execute(
+            """
+            INSERT INTO tweets (name, tweet)
+            VALUES ( %s, %s ) RETURNING id, name, tweet
+            """,
+            (username, tweet)
+        )
+        new_tweet = cursor.fetchone()
+        return new_tweet
 
     @classmethod
-    def remove_tweet(cls, tweet_id):
+    @uses_db
+    def remove_tweet(cls, cursor, tweet_id):
         """Deletes a tweet with given id"""
-        if tweet_id in cls._tweets.keys():
-            del cls._tweets[tweet_id]
+        cursor.execute(
+            """
+            DELETE FROM tweets
+            WHERE id=%s
+            """,
+            (tweet_id,)
+        )
