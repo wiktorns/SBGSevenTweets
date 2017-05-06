@@ -19,7 +19,7 @@ def uses_db(f):
 class Storage(object):
     _conn = pg8000.connect(
         user="radionica",
-        host="localhost",
+        host="radionica-postgres",
         database="radionica",
         password="P4ss"
     )
